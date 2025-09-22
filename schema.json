@@ -62,6 +62,13 @@
         },
         "optional": true
       },
+      "validfrom": {
+        "type": "objectAttribute",
+        "value": {
+          "type": "string"
+        },
+        "optional": true
+      },
       "validUntil": {
         "type": "objectAttribute",
         "value": {
@@ -583,6 +590,31 @@
         "type": "objectAttribute",
         "value": {
           "type": "number"
+        },
+        "optional": true
+      },
+      "gender": {
+        "type": "objectAttribute",
+        "value": {
+          "type": "union",
+          "of": [
+            {
+              "type": "string",
+              "value": "male"
+            },
+            {
+              "type": "string",
+              "value": "female"
+            },
+            {
+              "type": "string",
+              "value": "kids"
+            },
+            {
+              "type": "string",
+              "value": "both male & female"
+            }
+          ]
         },
         "optional": true
       },

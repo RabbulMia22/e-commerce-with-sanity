@@ -45,6 +45,20 @@ export const productType = defineType({
             validation: (Rule) => Rule.required().min(0),
         }),
         defineField({
+            name: 'gender',
+            title: 'Gender',
+            type: 'string',
+            options: {
+            list: [
+                { title: "Male", value: "male" },
+                { title: "Female", value: "female" },
+                { title: "Kids", value: "kids" },
+                { title: "Both Male & Female", value: "both male & female" },
+            ],
+        },
+        }),
+        
+        defineField({
             name: 'category',
             title: 'Category',
             type: 'array',

@@ -30,7 +30,7 @@ function Header() {
       <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center px-4 py-3">
         {/* Logo / Brand */}
         <Link
-          href="/shop"
+          href="/"
           className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-transparent hover:opacity-80 transition"
         >
           Shop

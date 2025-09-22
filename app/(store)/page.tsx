@@ -1,4 +1,5 @@
 
+import Banner from "@/components/Banner";
 import ProductView from "@/components/ProductView";
 import { getAllProducts } from "@/sanity/lib/products/getAllProducts";
 
@@ -9,7 +10,7 @@ export default async function Home() {
   
   return (
    <div className="container mx-auto ">
-     <h1>Hello World</h1>
+     <Banner />
      <ProductView products={products} />
    </div>
   );
