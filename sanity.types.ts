@@ -13,6 +13,64 @@
  */
 
 // Source: schema.json
+// sanity.types.ts
+
+export type Product = {
+  _id: string;
+  _type: "product";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+
+  title: string;
+
+  slug: {
+    _type: "slug";
+    current: string;
+  };
+
+  image?: {
+    _type: "image";
+    asset: {
+      _ref: string;
+      _type: "reference";
+    };
+    crop?: SanityImageCrop;
+    hotspot?: SanityImageHotspot;
+  };
+
+  description?: Array<{
+    _key: string;
+    _type: "block";
+    children: Array<{
+      _key: string;
+      _type: "span";
+      text: string;
+      marks?: string[];
+    }>;
+    markDefs?: Array<any>;
+    style?: string;
+  }>;
+
+  price: number;
+
+  // If you're using category as reference documents
+  category?: Array<{
+    _key: string;
+    _ref: string;
+    _type: "reference";
+  }>;
+
+  // If you changed category to simple dropdown ("men", "women", "children"),
+  // replace the above with:
+  // category: "men" | "women" | "children";
+
+  stock: number;
+};
+
+// You may also already have these globally from Sanity
+
+
 export type Post = {
   _id: string;
   _type: "post";
@@ -284,3 +342,15 @@ export type SanityAssetSourceData = {
 
 export type AllSanitySchemaTypes = Post | Author | Category | BlockContent | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageHotspot | SanityImageCrop | SanityFileAsset | SanityImageAsset | SanityImageMetadata | Geopoint | Slug | SanityAssetSourceData;
 export declare const internalGroqTypeReferenceTo: unique symbol;
+// Source: ./sanity/lib/products/getAllProducts.ts
+// Variable: ALL_PRODUCTS_QUERY
+// Query: *[_type == "product"] | order(name asc)
+export type ALL_PRODUCTS_QUERYResult = Array<never>;
+
+// Query TypeMap
+import "@sanity/client";
+declare module "@sanity/client" {
+  interface SanityQueries {
+    "*[_type == \"product\"] | order(name asc)": ALL_PRODUCTS_QUERYResult;
+  }
+}

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import Hearder from "@/components/Hearder";
 import { ClerkProvider } from '@clerk/nextjs'
+import { SanityLive } from "@/sanity/lib/live";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
           <Hearder />
           {children}
         </main>
+        <SanityLive />
       </body>
     </html>
     </ClerkProvider>

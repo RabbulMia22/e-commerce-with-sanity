@@ -1,11 +1,16 @@
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
 
-export default function Home() {
+import ProductView from "@/components/ProductView";
+import { getAllProducts } from "@/sanity/lib/products/getAllProducts";
+
+
+
+export default async function Home() {
+  const products = await getAllProducts();
+  
   return (
-   <div>
+   <div className="container mx-auto ">
      <h1>Hello World</h1>
-     <Button >Button</Button>
+     <ProductView products={products} />
    </div>
   );
 }
