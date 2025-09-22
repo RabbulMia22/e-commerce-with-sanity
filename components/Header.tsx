@@ -49,7 +49,7 @@ function Header() {
             />
             <button
               type="submit"
-              className="absolute right-2 p-2 text-gray-400 hover:text-blue-600 transition-colors duration-200 hover:bg-blue-50 rounded-full"
+              className="absolute right-2 p-2 text-gray-400 hover:text-blue-600 transition-colors duration-200 hover:bg-blue-50 rounded-full cursor-pointer"
               aria-label="Search"
             >
               <svg
