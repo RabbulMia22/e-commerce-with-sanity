@@ -11,9 +11,15 @@ import Link from "next/link";
 import Form from "next/form";
 import React from "react";
 import { PackageIcon, TrolleyIcon } from "@sanity/icons";
+import { useHydratedStore } from "@/hooks/useHydratedStore";
+import AdminIndicator from "@/components/AdminIndicator";
 
 function Header() {
   const { user } = useUser();
+  const { basket, hydrated } = useHydratedStore();
+  
+  // Calculate total items in basket only after hydration
+  const totalItems = hydrated ? basket.reduce((total, item) => total + item.quantity, 0) : 0;
 
   const createPassKey = async () => {
     try {
@@ -78,10 +84,15 @@ function Header() {
             className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white 
                        font-medium px-4 py-2 rounded-lg shadow-md 
                        hover:from-blue-600 hover:to-blue-700 hover:shadow-lg 
-                       transition duration-300"
+                       transition duration-300 relative"
           >
             <TrolleyIcon className="w-5 h-5 mr-2" />
             My Basket
+            {totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+                {totalItems > 99 ? '99+' : totalItems}
+              </span>
+            )}
           </Link>
 
           {/* Orders (only signed in) */}
@@ -97,6 +108,9 @@ function Header() {
                 <PackageIcon className="w-5 h-5 mr-2" />
                 My Orders
               </Link>
+              
+              {/* Admin Studio Access */}
+              <AdminIndicator />
             </SignedIn>
 
             {/* User info */}

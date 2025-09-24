@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShoppingCart, Heart, Share, Plus, Minus } from 'lucide-react';
 import { Product } from '@/sanity.types';
+import useBasketStore from '@/store/store';
 
 interface ProductInteractionsProps {
   product: Product;
@@ -14,6 +15,10 @@ export default function ProductInteractions({ product, isOutOfStock, stockLevel 
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  // Use Zustand store
+  const { addToBasket, getItemCount } = useBasketStore();
+  const currentItemCount = getItemCount(product._id || '');
 
   const handleQuantityChange = (change: number) => {
     const newQuantity = quantity + change;
@@ -27,13 +32,16 @@ export default function ProductInteractions({ product, isOutOfStock, stockLevel 
     
     setIsAddingToCart(true);
     
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`Adding ${quantity} of ${product.title} to cart`);
-      // TODO: Implement actual add to cart functionality
+      // Add multiple items based on quantity selected
+      for (let i = 0; i < quantity; i++) {
+        addToBasket(product);
+      }
+      console.log(`Added ${quantity} of ${product.title} to basket`);
+      // Reset quantity after adding
+      setQuantity(1);
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('Error adding to basket:', error);
     } finally {
       setIsAddingToCart(false);
     }
@@ -114,6 +122,11 @@ export default function ProductInteractions({ product, isOutOfStock, stockLevel 
         >
           <ShoppingCart className={`w-6 h-6 mr-3 ${isAddingToCart ? 'animate-pulse' : ''}`} />
           {isAddingToCart ? 'Adding...' : isOutOfStock ? 'Out of Stock' : `Add ${quantity} to Cart`}
+          {currentItemCount > 0 && (
+            <span className="ml-2 bg-white text-blue-600 px-2 py-1 rounded-full text-sm font-bold">
+              {currentItemCount} in cart
+            </span>
+          )}
         </button>
         
         <div className="grid grid-cols-2 gap-2">

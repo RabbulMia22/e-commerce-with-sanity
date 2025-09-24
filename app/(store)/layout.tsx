@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
-import Hearder from "@/components/Hearder";
+import Header from "@/components/Header";
 import { ClerkProvider } from '@clerk/nextjs'
 import { SanityLive } from "@/sanity/lib/live";
 
@@ -32,7 +32,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <main>
-          <Hearder />
+          <Header />
           {children}
         </main>
         <SanityLive />

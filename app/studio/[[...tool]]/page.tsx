@@ -8,12 +8,31 @@
  */
 
 import { NextStudio } from 'next-sanity/studio'
+import { redirect } from 'next/navigation'
+import { currentUser } from '@clerk/nextjs/server'
 import config from '../../../sanity.config'
+import { isUserAdmin } from '@/lib/admin'
 
-export const dynamic = 'force-static'
+export const dynamic = 'force-dynamic' // Changed from force-static to allow auth checks
 
 export { metadata, viewport } from 'next-sanity/studio'
 
-export default function StudioPage() {
+export default async function StudioPage() {
+  // Check if user is authenticated and is an admin
+  const user = await currentUser();
+  
+  if (!user) {
+    // Redirect to sign in if not authenticated
+    redirect('/sign-in?redirect_url=/studio');
+  }
+
+  const isAdmin = await isUserAdmin(user);
+  
+  if (!isAdmin) {
+    // Redirect to home page if not an admin
+    redirect('/?error=unauthorized');
+  }
+
+  // Only admins can access the studio
   return <NextStudio config={config} />
 }
