@@ -7,9 +7,16 @@ import Image from 'next/image'
 import { useHydratedStore } from '@/hooks/useHydratedStore'
 
 function MyOrderPage() {
-  const { getOrders, addToBasket, hydrated } = useHydratedStore();
+  const { getOrders, addToBasket, hydrated, cleanupDuplicateOrders } = useHydratedStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Cleanup duplicates when component mounts
+  React.useEffect(() => {
+    if (hydrated) {
+      cleanupDuplicateOrders();
+    }
+  }, [hydrated, cleanupDuplicateOrders]);
 
   // Show loading state while store is hydrating
   if (!hydrated) {
@@ -142,8 +149,8 @@ function MyOrderPage() {
 
         {/* Orders List */}
         <div className="space-y-6">
-          {filteredOrders.map((order) => (
-            <div key={order.id} className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+          {filteredOrders.map((order, orderIndex) => (
+            <div key={`${order.id}-${orderIndex}`} className="bg-white rounded-2xl shadow-xl border overflow-hidden">
               {/* Order Header */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -179,7 +186,7 @@ function MyOrderPage() {
               <div className="p-6">
                 <div className="grid gap-4">
                   {order.items.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
+                    <div key={`${order.id}-item-${index}-${item.product._id}`} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
                       <div className="relative w-20 h-20 flex-shrink-0">
                         {item.product.image ? (
                           <Image

@@ -23,7 +23,7 @@ function BasketPage() {
   } = useHydratedStore();
 
   const { user } = useUser();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
 
   // Only calculate after hydration to prevent hydration mismatch
   const totalPrice = hydrated ? getTotalPrice() : 0;
@@ -32,8 +32,8 @@ function BasketPage() {
   const tax = totalPrice * 0.08; 
   const finalTotal = totalPrice + shippingCost + tax;
 
-  // Handle Stripe checkout
-  const handleCheckout = async () => {
+  // Handle checkout redirect to Bangladesh shipping form
+  const handleCheckout = () => {
     if (!user) {
       alert('Please sign in to proceed with checkout');
       return;
@@ -44,52 +44,8 @@ function BasketPage() {
       return;
     }
 
-    setIsCheckingOut(true);
-
-    try {
-      const metadata = {
-        orderNumber: `ORD-${Date.now()}`,
-        customerName: user.fullName || 'Anonymous',
-        customerEmail: user.emailAddresses[0]?.emailAddress || '',
-        clerkUserId: user.id,
-      };
-
-      console.log('Processing payment for:', metadata);
-      console.log('Basket items:', basket);
-      console.log('Total amount:', finalTotal);
-
-      // Get current base URL dynamically
-      const currentUrl = window.location.origin;
-      console.log('Using base URL:', currentUrl);
-
-      const checkoutSession = await createSessionCheckout(basket, metadata, currentUrl);
-      
-      if (checkoutSession?.url) {
-        // Redirect to Stripe checkout for real payment processing
-        console.log('Redirecting to Stripe checkout:', checkoutSession.url);
-        window.location.href = checkoutSession.url;
-      } else {
-        throw new Error('No checkout URL received from Stripe');
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      
-      let errorMessage = 'Failed to create checkout session. Please try again.';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Stripe is not configured')) {
-          errorMessage = 'Payment system is not properly configured. Please contact support.';
-        } else if (error.message.includes('price')) {
-          errorMessage = 'There was an issue with item pricing. Please refresh and try again.';
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
-        }
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setIsCheckingOut(false);
-    }
+    // Redirect to the checkout page with Bangladesh shipping form
+    window.location.href = '/checkout';
   };
 
   // Show loading state while hydrating
@@ -349,15 +305,15 @@ function BasketPage() {
               {/* Checkout Button */}
               <button 
                 onClick={handleCheckout}
-                disabled={isCheckingOut || basket.length === 0 || !user}
+                disabled={basket.length === 0 || !user}
                 className={`w-full mt-6 flex items-center justify-center px-6 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg ${
-                  isCheckingOut || basket.length === 0 || !user
+                  basket.length === 0 || !user
                     ? 'bg-gray-400 cursor-not-allowed text-white'
                     : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transform hover:scale-105'
                 }`}
               >
-                <CreditCard className={`w-5 h-5 mr-2 ${isCheckingOut ? 'animate-pulse' : ''}`} />
-                {isCheckingOut ? 'Processing...' : !user ? 'Sign In to Checkout' : 'Proceed to Checkout'}
+                <CreditCard className="w-5 h-5 mr-2" />
+                {!user ? 'Sign In to Checkout' : '🇧🇩 Checkout (Bangladesh Delivery)'}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">

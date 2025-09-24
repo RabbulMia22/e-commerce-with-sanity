@@ -29,6 +29,8 @@ interface BasketState {
     getItems: () => BasketItem[];
     addOrder: (order: Order) => void;
     getOrders: () => Order[];
+    cleanupDuplicateOrders: () => void;
+    clearAllOrders: () => void;
 }
 
  const useBasketStore = create<BasketState>()(
@@ -71,9 +73,45 @@ interface BasketState {
             },
             getItems: () => get().basket,
             addOrder: (order: Order) => {
-                set({ orders: [order, ...get().orders] });
+                const existingOrders = get().orders;
+                
+                // Check for duplicates by both ID and sessionId
+                const duplicateBySessionId = existingOrders.some(
+                    existingOrder => existingOrder.sessionId === order.sessionId
+                );
+                const duplicateById = existingOrders.some(
+                    existingOrder => existingOrder.id === order.id
+                );
+                
+                if (!duplicateBySessionId && !duplicateById) {
+                    set({ orders: [order, ...existingOrders] });
+                    console.log('Order added successfully:', order.id);
+                } else {
+                    console.log('Duplicate order prevented:', {
+                        orderId: order.id,
+                        sessionId: order.sessionId,
+                        duplicateBySessionId,
+                        duplicateById
+                    });
+                }
             },
             getOrders: () => get().orders,
+            cleanupDuplicateOrders: () => {
+                const orders = get().orders;
+                const uniqueOrders = orders.filter((order, index, self) => {
+                    // Keep the first occurrence of each unique sessionId
+                    return index === self.findIndex(o => o.sessionId === order.sessionId);
+                });
+                
+                if (uniqueOrders.length !== orders.length) {
+                    console.log(`Cleaned up ${orders.length - uniqueOrders.length} duplicate orders`);
+                    set({ orders: uniqueOrders });
+                }
+            },
+            clearAllOrders: () => {
+                console.log('Clearing all orders from storage');
+                set({ orders: [] });
+            },
         }),
         { name: "basket-orders-storage" }
     )

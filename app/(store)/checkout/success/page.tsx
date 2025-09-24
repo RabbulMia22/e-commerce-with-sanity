@@ -5,12 +5,15 @@ import { CheckCircle, Package, ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
 import useBasketStore, { Order } from '@/store/store'
 import { useSearchParams } from 'next/navigation'
+import { saveOrderToSanity, getStripeSessionDetails } from '@/lib/orders'
 
 function CheckoutSuccessPage() {
-  const { clearBasket, getItems, getTotalPrice, addOrder } = useBasketStore();
+  const { clearBasket, getItems, getTotalPrice, addOrder, getOrders } = useBasketStore();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [orderSaved, setOrderSaved] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [processedSessions, setProcessedSessions] = useState<Set<string>>(new Set());
 
   // Debug logging
   useEffect(() => {
@@ -20,8 +23,23 @@ function CheckoutSuccessPage() {
   }, [sessionId]);
 
   useEffect(() => {
-    if (sessionId && !orderSaved) {
+    // Prevent duplicate processing
+    if (sessionId && !orderSaved && !processing && !processedSessions.has(sessionId)) {
       console.log('Processing order for session:', sessionId);
+      
+      // Mark session as being processed
+      setProcessedSessions(prev => new Set([...prev, sessionId]));
+      
+      // Check if order already exists for this session
+      const existingOrders = getOrders();
+      const existingOrder = existingOrders.find((order: Order) => order.sessionId === sessionId);
+      
+      if (existingOrder) {
+        console.log('Order already exists for session:', sessionId);
+        setOrderSaved(true);
+        clearBasket(); // Clear basket if order already processed
+        return;
+      }
       
       // Get current basket before clearing
       const basketItems = getItems();
@@ -31,35 +49,162 @@ function CheckoutSuccessPage() {
       console.log('Total price:', total);
       
       if (basketItems.length > 0) {
-        // Create order object
-        const order: Order = {
-          id: sessionId,
-          orderNumber: `ORD-${Date.now().toString().slice(-8).toUpperCase()}`,
-          items: basketItems,
-          total: total,
-          status: 'processing',
-          orderDate: new Date().toISOString(),
-          sessionId: sessionId,
-        };
-
-        // Save order to store
-        addOrder(order);
-        setOrderSaved(true);
-        
-        console.log('Order saved successfully:', order);
+        setProcessing(true);
+        // Process order and save to both local store and Sanity
+        processOrder(sessionId, basketItems, total);
       } else {
         console.log('No items in basket, order not created');
       }
-      
-      // Clear the basket after successful payment
-      clearBasket();
-      console.log('Basket cleared after payment');
     } else if (!sessionId) {
       console.log('No session ID found in URL');
     } else if (orderSaved) {
       console.log('Order already saved, skipping');
+    } else if (processing) {
+      console.log('Order processing in progress, skipping');
     }
-  }, [sessionId, clearBasket, getItems, getTotalPrice, addOrder, orderSaved]);
+  }, [sessionId, orderSaved, processing, processedSessions]);
+
+  const processOrder = async (sessionId: string, basketItems: any[], total: number) => {
+    try {
+      console.log('Starting order processing for session:', sessionId);
+      
+      // Get Stripe session details with retries
+      let stripeDetails = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries && !stripeDetails) {
+        try {
+          console.log(`Attempting to get session details (attempt ${retryCount + 1})`);
+          stripeDetails = await getStripeSessionDetails(sessionId);
+          
+          if (stripeDetails) {
+            console.log('Session details retrieved successfully:', {
+              sessionId: stripeDetails.session?.id,
+              paymentStatus: stripeDetails.session?.payment_status,
+              hasMetadata: !!stripeDetails.session?.metadata
+            });
+            break;
+          }
+        } catch (error) {
+          console.error(`Session retrieval attempt ${retryCount + 1} failed:`, error);
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            console.log('Waiting before retry...');
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+          }
+        }
+      }
+      
+      if (!stripeDetails) {
+        console.error('Failed to get Stripe session details after all retries');
+        alert(`Failed to process order after ${maxRetries} attempts. Please contact support with session ID: ${sessionId}`);
+        return;
+      }
+
+      const orderNumber = `ORD-${Date.now().toString().slice(-8).toUpperCase()}`;
+      const uniqueOrderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Create order object for local storage
+      const order: Order = {
+        id: uniqueOrderId,
+        orderNumber: orderNumber,
+        items: basketItems,
+        total: total,
+        status: 'processing',
+        orderDate: new Date().toISOString(),
+        sessionId: sessionId,
+      };
+
+      // Save order to local store
+      addOrder(order);
+
+      // Extract shipping information from Stripe metadata (Bangladesh format)
+      const metadata = (stripeDetails.session as any).metadata;
+      const shippingAddress = metadata ? {
+        fullName: metadata.fullName || stripeDetails.session.customer_name || 'N/A',
+        phoneNumber: metadata.phoneNumber || 'Not provided',
+        district: metadata.district || 'dhaka',
+        homeAddress: metadata.homeAddress || 'Address not provided',
+        country: metadata.country || 'Bangladesh',
+      } : undefined;
+
+      // Prepare order data for Sanity
+      const sanityOrderData = {
+        orderNumber: orderNumber,
+        stripeSessionId: sessionId,
+        stripeCustomerId: stripeDetails.session.customer as string,
+        total: (stripeDetails.session.amount_total || 0) / 100, // Convert from cents
+        customerName: stripeDetails.session.customer_name || 'N/A',
+        email: stripeDetails.session.customer_email || 'N/A',
+        stripePaymentIntentId: typeof stripeDetails.session.payment_intent === 'string' 
+          ? stripeDetails.session.payment_intent 
+          : stripeDetails.session.payment_intent?.id || '',
+        products: basketItems.map(item => ({
+          product: {
+            _type: 'reference' as const,
+            _ref: item.product._id
+          },
+          quantity: item.quantity
+        })),
+        totalPrice: (stripeDetails.session.amount_total || 0) / 100,
+        currency: stripeDetails.session.currency || 'usd',
+        amountDiscount: 0,
+        status: 'paid',
+        shippingAddress: shippingAddress,
+        deliveryStatus: 'confirmed',
+        deliveryNotes: ''
+      };
+
+      // Save order to Sanity backend via API route
+      const response = await fetch('/api/orders/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderData: sanityOrderData,
+          basketItems: basketItems
+        })
+      });
+
+      if (response.ok) {
+        console.log('Order saved to Sanity via API');
+      } else {
+        console.error('Failed to save order to Sanity via API');
+      }
+      
+      setOrderSaved(true);
+      
+      // Clear the basket after successful payment
+      clearBasket();
+      
+      console.log('Order saved successfully to both local store and Sanity:', order);
+    } catch (error) {
+      console.error('Error processing order:', error);
+      
+      // Show user-friendly error message
+      alert('There was an error processing your order. Please contact support with session ID: ' + sessionId);
+      
+      // Still save to local store even if Sanity fails
+      const fallbackOrderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const order: Order = {
+        id: fallbackOrderId,
+        orderNumber: `ORD-${Date.now().toString().slice(-8).toUpperCase()}`,
+        items: basketItems,
+        total: total,
+        status: 'processing',
+        orderDate: new Date().toISOString(),
+        sessionId: sessionId,
+      };
+      addOrder(order);
+      setOrderSaved(true);
+      clearBasket();
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
