@@ -12,6 +12,19 @@ const nextConfig: NextConfig = {
     }
    ]
   },
+  // Optimize for Vercel deployment
+  experimental: {
+    // Enable static optimization
+    optimizePackageImports: ['lucide-react', '@sanity/image-url']
+  },
+  // Ensure proper TypeScript handling
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  // ESLint configuration
+  eslint: {
+    ignoreDuringBuilds: false,
+  }
 };
 
 export default nextConfig;
